@@ -71,50 +71,65 @@ fn main() {
     // Checking if there's a symbol around the numbers
     let mut sum_numbers = 0;
     let lines : Vec<&str> = input_lines.collect();
-    let line_length = lines[0].len();
     'numberLoop: for num in found_numbers {
-        let checked_start_index = {
-            if num.start_index == 0 {
-                0
+        'above_line: {
+            let checked_line = lines.get(num.line_index - 1);
+            match checked_line {
+                None => break 'above_line, // No line above, you can skip this check
+                Some(s) => {
+                    let chars : Vec<char> = s.chars().collect();
+                    for i in num.start_index - 1 ..= num.end_index + 1 {
+                        if let Some(c) = chars.get(i) {
+                            if is_symbol(*c) {
+                                sum_numbers += num.value;
+                                continue 'numberLoop;
+                            }
+                        }
+                        
+                    }
+                }
             }
-            else {
-                num.start_index - 1
+        }
+
+        // Same line
+        let chars : Vec<char> = lines.get(num.line_index).unwrap().chars().collect();
+        if let Some(c) = chars.get(num.start_index - 1) {
+            if is_symbol(*c) {
+                sum_numbers += 1;
+                continue 'numberLoop;
             }
-        };
-        let checked_end_index = {
-            if num.end_index == line_length - 1 {
-                line_length - 1
-            }
-            else {
-                num.end_index + 1
-            }
-        };
-        // The line above
-        if num.line_index != 0 {
-            let checked_string = &lines.get(num.line_index - 1).unwrap()[checked_start_index..checked_end_index];
-            if !checked_string.chars().all(char::is_alphanumeric) & !checked_string. {
-                sum_numbers += num.value;
+        }
+        if let Some(c) = chars.get(num.end_index + 1) {
+            if is_symbol(*c) {
+                sum_numbers += 1;
                 continue 'numberLoop;
             }
         }
 
-        // The same line
-        let checked_string = &lines.get(num.line_index).unwrap()[checked_start_index..checked_end_index];
-        if !checked_string.chars().all(char::is_alphanumeric) & !checked_string.starts_with('.') & !checked_string.ends_with('.') {
-            sum_numbers += num.value;
-            continue 'numberLoop; 
-        }
+        'below_line: {
+            let chars: Vec<char>;
+            if let Some(line) = lines.get(num.line_index + 1) {
+                chars = line.chars().collect();
+            }
+            else {
+                break 'below_line; // No below line, skip this check
+            }
 
-        // The line below
-        if num.line_index != lines.len() - 1 {
-            let checked_string = &lines.get(num.line_index + 1).unwrap()[checked_start_index..checked_end_index];
-            if !checked_string.chars().all(char::is_alphanumeric) {
-                sum_numbers += num.value;
-                continue 'numberLoop;
+            for i in num.start_index - 1 ..= num.end_index + 1 {
+                if let Some(c) = chars.get(i) {
+                    if is_symbol(*c) {
+                        sum_numbers += 1;
+                        continue 'numberLoop;
+                    }
+                }
             }
         }
-        dbg!(num.value);
+
     }
     dbg!(sum_numbers);
     
+}
+
+fn is_symbol(c : char) -> bool {
+    !c.is_alphanumeric() & (c != '.')
 }
