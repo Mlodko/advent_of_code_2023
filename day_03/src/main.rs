@@ -36,32 +36,36 @@ fn main() {
     // Finding all numbers 
     let mut found_numbers : Vec<FoundNumber> = Vec::new();
     for line in input_lines.clone().enumerate() {
+        dbg!(line.0);
         let chars : Vec<char> = line.1.chars().collect();
         let mut start_index = 0;
-        while start_index < chars.len() {
-            println!("Checking ({}, {})", line.0, start_index);
-            if !chars[start_index].is_alphanumeric() {
+        'search_loop: while start_index < line.1.len() {
+            if !chars.get(start_index).unwrap().is_digit(10) {
                 start_index += 1;
                 continue;
             }
-
-            if chars[start_index].is_numeric() {
-                let mut number = String::from(chars[start_index]);
-                if start_index >= line.1.len() {
-                    break;
-                }
-                let mut end_index = start_index + 1;
-                loop {
-                    if !chars[end_index].is_numeric() {
-                        let number : usize = number.parse().unwrap();
-                        let found_number = FoundNumber::new(number, line.0, start_index, end_index - 1);
-                        start_index = end_index;
-                        found_numbers.push(found_number);
-                        break;
+            let mut current_value : usize = 0;
+            for end_index in start_index..line.1.len() {
+                let checked_substring = line.1.get(start_index..=end_index).unwrap();
+                let parsed_substring = checked_substring.parse::<usize>();
+                match parsed_substring {
+                    Ok(num) => {
+                        current_value = num;
                     }
-                    number.push(chars[end_index]);
-                    end_index += 1;
+                    Err(_) =>{
+                        let new_number = FoundNumber::new(current_value, line.0, start_index, end_index - 1);
+                        dbg!(&new_number);
+                        found_numbers.push(new_number);
+                        start_index = end_index + 1;
+                        continue 'search_loop;
+                    }
                 }
+            }
+            if current_value != 0 {
+                let new_number = FoundNumber::new(current_value, line.0, start_index, line.1.len() - 1);
+                dbg!(&new_number);
+                found_numbers.push(new_number);
+                start_index = line.1.len();
             }
         }
     }
@@ -73,14 +77,15 @@ fn main() {
     let lines : Vec<&str> = input_lines.collect();
     'numberLoop: for num in found_numbers {
         'above_line: {
-            let checked_line = lines.get(num.line_index - 1);
+            let checked_line = lines.get(sub_or_zero(num.line_index, 1));
             match checked_line {
                 None => break 'above_line, // No line above, you can skip this check
                 Some(s) => {
                     let chars : Vec<char> = s.chars().collect();
-                    for i in num.start_index - 1 ..= num.end_index + 1 {
+                    for i in sub_or_zero(num.start_index, 1) ..= num.end_index + 1 {
                         if let Some(c) = chars.get(i) {
                             if is_symbol(*c) {
+                                println!("Adding {} from above line", num.value);
                                 sum_numbers += num.value;
                                 continue 'numberLoop;
                             }
@@ -93,15 +98,17 @@ fn main() {
 
         // Same line
         let chars : Vec<char> = lines.get(num.line_index).unwrap().chars().collect();
-        if let Some(c) = chars.get(num.start_index - 1) {
+        if let Some(c) = chars.get(sub_or_zero(num.start_index, 1)) {
             if is_symbol(*c) {
-                sum_numbers += 1;
+                println!("Adding {} from same line", num.value);
+                sum_numbers += num.value;
                 continue 'numberLoop;
             }
         }
         if let Some(c) = chars.get(num.end_index + 1) {
             if is_symbol(*c) {
-                sum_numbers += 1;
+                println!("Adding {} from same line", num.value);
+                sum_numbers += num.value;
                 continue 'numberLoop;
             }
         }
@@ -115,10 +122,11 @@ fn main() {
                 break 'below_line; // No below line, skip this check
             }
 
-            for i in num.start_index - 1 ..= num.end_index + 1 {
+            for i in sub_or_zero(num.start_index, 1) ..= num.end_index + 1 {
                 if let Some(c) = chars.get(i) {
                     if is_symbol(*c) {
-                        sum_numbers += 1;
+                        println!("Adding {} from below line", num.value);
+                        sum_numbers += num.value;
                         continue 'numberLoop;
                     }
                 }
@@ -132,4 +140,10 @@ fn main() {
 
 fn is_symbol(c : char) -> bool {
     !c.is_alphanumeric() & (c != '.')
+}
+fn sub_or_zero(a: usize, b : usize) -> usize {
+    if let Some(out) = a.checked_sub(b) {
+        return out;
+    }
+    0
 }
